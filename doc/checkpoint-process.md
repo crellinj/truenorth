@@ -199,9 +199,9 @@ would accept chains old nodes reject. Only remove a checkpoint if:
 
 Adding a checkpoint is a one-way door in practice.
 
-## Relationship to other defenses
+## Relationship to other defences
 
-Checkpoints are one of several layered defenses:
+Checkpoints are one of several layered defences:
 
 - **Checkpoints** (this doc): release-time hard immutability for
   specific historical blocks
@@ -218,5 +218,5 @@ Checkpoints are one of several layered defenses:
   distribution, reorg events; social layer
 - **Delayed exchange listings**: reduces attack payoff; social layer
 
-No single defense is sufficient in isolation. The maintainer's job
+No single defence is sufficient in isolation. The maintainer's job
 regarding checkpoints is one small but critical piece of the whole.

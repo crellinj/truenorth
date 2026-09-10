@@ -98,12 +98,12 @@ common algorithms can be rented cheaply.
 
 **Planned additional measures:**
 - **Developer checkpoints.** Active from genesis (mechanism ships in the Bitcoin
-  Core base). Primary defense in the early launch window; a fresh checkpoint added
+  Core base). Primary defence in the early launch window; a fresh checkpoint added
   each release. Retained afterward as a near-zero-cost static fallback.
 - **Notarization to a larger chain (delayed-PoW style).** Committed; built and
   deployed once the chain is live. Periodically commits TrueNorth block hashes into a
   high-hashrate chain so any reorg past a notarized point gets rejected. Becomes the
-  primary ongoing 51% defense as checkpoint reliance is wound down.
+  primary ongoing 51% defence as checkpoint reliance is wound down.
 - **Documented emergency-response plan.** Coordinated checkpoint or node update to
   reject a malicious deep reorg (the real post-attack remedy).
 - **Exchange guidance.** Recommend 60–100+ confirmations for deposits.
@@ -113,10 +113,10 @@ common algorithms can be rented cheaply.
   danger window.
 - Cloud-CPU rental remains a long-term vector. RandomX has some specialized hardware
   (e.g. iPollo X1) but its efficiency advantage over CPUs is small.
-- **Merge-mining**, the strongest small-coin defense, was deliberately rejected. It
+- **Merge-mining**, the strongest small-coin defence, was deliberately rejected. It
   ties mining to ASICs or a parent ecosystem and breaks the "anyone can mine" goal.
 - There's **no after-the-fact "counter-mine to reverse" cure.** Counter-mining is
-  itself a 51% attack and would prove the chain mutable. Defense is prevention plus
+  itself a 51% attack and would prove the chain mutable. Defence is prevention plus
   instant tools (checkpoints), not hashpower retaliation.
 
 ## Open Items
