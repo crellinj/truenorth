@@ -406,8 +406,9 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
         // No DNS seeds for testnet4 yet. Bootstrap uses the compiled-in
-        // fallback list at contrib/seeds/nodes_testnet4.txt (currently a
-        // single DigitalOcean operator seed at 138.197.97.151 + its onion).
+        // fallback list of currently-known operator seeds; see
+        // contrib/seeds/nodes_testnet4.txt and the "Known operator seeds"
+        // section of doc/public-seed-setup.md.
 
         // Distinct base58 / bech32 from Bitcoin testnet AND from our own
         // testnet3 -- different testnets should be visually-distinguishable

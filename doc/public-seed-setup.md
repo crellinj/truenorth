@@ -417,7 +417,20 @@ continuously online for at least 7 days on both endpoints (clearnet + onion).
 
 | Operator | Clearnet | Onion | Notes |
 |---|---|---|---|
-| robert-pathy | `seed.nyc.tncoin.xyz:49555` (A record → `138.197.97.151`) | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
+| robert-pathy | `seed.nyc.tncoin.xyz:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. Hostname is an A record for `138.197.97.151`. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
 
-Both endpoints are compiled in via `contrib/seeds/nodes_testnet4.txt`, so a
-freshly-installed node with no `-addnode=` config will find them on cold boot.
+### Topology B — onion-only
+
+For operators without a directly-routable public IP (residential connections
+behind NAT, dynamic-IP ISPs, or setups deliberately hiding the network
+location). The onion is the only endpoint; clearnet peering requires exit
+nodes to reach nothing since there is nothing to reach.
+
+| Operator | Onion | Notes |
+|---|---|---|
+| septentrion | `6vquc5sijturhtd6gx3wvhphytf7kroq7w5yd244jxsc74ygowy7mwyd.onion:49555` | ≥7 days continuous uptime. |
+
+All endpoints above are compiled in via `contrib/seeds/nodes_testnet4.txt`,
+so a freshly-installed node with no `-addnode=` config will find them on
+cold boot — including nodes started with `-onlynet=onion`, which have no
+Topology-A endpoints available.
