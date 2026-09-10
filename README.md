@@ -298,6 +298,6 @@ Bitcoin's architecture isn't the only way. Block time, PoW algorithm, subsidy sc
 - **Perpetual security**: tail emission keeps miners paid past the last halving.
 - **Faster confirmations**: 2-minute blocks for usability without sacrificing security relative to other small PoW coins.
 - **Quantum-resistant by default**: P2QRH addresses commit to a hash of the pubkey, not the pubkey itself; post-quantum signature schemes plug in via soft fork without disturbing existing UTXOs.
-- **Canadian-themed**: a piece of flavor.
+- **Canadian**: A cryptocurrency for all of Canada.
 
 Not a meme launch. No presale. No premined treasury. Just a CPU-mineable coin with Bitcoin-style monetary policy plus tail emission.
