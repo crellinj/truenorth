@@ -1,6 +1,7 @@
 # TrueNorth (NORTH) v1 Coin Specification
 
-> **Status:** v1 design, confirmed.
+> **Status:** v1 design, confirmed. Public testnet4 live since 2026-08.
+> **Mainnet launch:** targeted for **2026-10-05** (soft date; slip possible).
 > **Name / Ticker:** TrueNorth / NORTH. Canadian-themed.
 > **Base codebase:** fork of Bitcoin Core (current stable release).
 
@@ -120,7 +121,8 @@ common algorithms can be rented cheaply.
   instant tools (checkpoints), not hashpower retaliation.
 
 ## Open Items
-- Finalize §5 network parameters and §6 genesis details (does not block development)
+- §5 network parameters: **resolved** (ports, magic bytes, address prefixes, BIP32 magics all live in `src/kernel/chainparams.cpp`)
+- §6 genesis: coinbase message TBD (chosen at ceremony from a contemporary Canadian headline); timestamp/nonce/hash computed at the genesis-mining run
 
 ## Build Outline
 Fork Bitcoin Core. Integrate RandomX with the customized "RandomNorth" variant and

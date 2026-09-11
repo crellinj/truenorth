@@ -2,7 +2,7 @@
 
 A Canadian-themed cryptocurrency forked from Bitcoin Core, using **RandomX** (CPU-friendly, ASIC-resistant) proof-of-work and **LWMA-1** per-block difficulty adjustment.
 
-**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet TBD.
+**Status**: Public testnet4 (open to anyone; see [`doc/testnet.md`](doc/testnet.md) to join). Mainnet launch **targeted for 2026-10-05** — see [Mainnet](#mainnet) below.
 
 ---
 
@@ -108,7 +108,21 @@ Address example:
 
 ### Mainnet
 
-Not yet launched. Don't run anyone's "mainnet" binary that you can't trace back to this repository's tagged releases.
+**Target launch: 2026-10-05.** Network parameters are finalized in
+`src/kernel/chainparams.cpp` (P2P port 9555, RPC port 9554, address
+prefixes: `T…` P2PKH / `T…` P2SH / `north1…` bech32 / `north1z…` P2QRH
+default, `Tpub…`/`Tprv…` BIP32 extended keys). Public testnet4 has been
+running since 2026-08 with multiple independent miners as the shakedown
+before mainnet.
+
+The date is a **target, not a commitment**. If a launch blocker
+surfaces (consensus bug, coordination issue, network readiness) the
+ceremony will slip and a revised date will be announced. Watch
+`#truenorth` on OFTC IRC and this repository's tagged releases for
+the final go/no-go.
+
+Don't run anyone's "mainnet" binary that you can't trace back to this
+repository's tagged releases.
 
 ### Regtest (local development)
 
