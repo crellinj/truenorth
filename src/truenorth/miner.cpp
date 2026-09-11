@@ -30,6 +30,7 @@
 //                   [-budgetseconds=N]
 //                   [-rpchost=127.0.0.1] [-rpcport=<port>]
 //                   [-rpcuser=<u>] [-rpcpassword=<p>]
+//                   [-rpcwaittimeout=<seconds>]  (default 60; 0 = fail-fast)
 //                   [-mode=auto|light|fast]
 //                   [-largepages=auto|on|off] [-numa=auto|on|off]
 //   truenorth-miner -benchmark=1 -threads=N [-budgetseconds=N]
@@ -127,6 +128,11 @@ struct RpcConfig {
     std::string user;        //!< empty -> use cookie
     std::string password;    //!< empty -> use cookie
     std::string cookie_path; //!< resolved from datadir + chain
+    //!< Seconds to keep retrying a connection-refused RPC before giving up.
+    //!< 0 = fail-fast on the first connection failure. Only affects the
+    //!< transport-level "couldn't connect" path; auth/HTTP/JSON errors are
+    //!< always fatal on the first attempt since waiting won't cure them.
+    int rpc_wait_timeout_seconds{60};
 };
 
 struct HTTPReply {
@@ -231,70 +237,97 @@ uint256 Uint256FromHexOrDie(const std::string& hex, const char* what)
 // "inconclusive" string result on rejection) inspect the returned value.
 UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue& params)
 {
-    raii_event_base base = obtain_event_base();
-    raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), cfg.host, cfg.port);
-    evhttp_connection_set_timeout(evcon.get(), 30); // seconds
+    // Cold start typically races the daemon's RPC bind: the daemon process
+    // is running (systemd After=/Requires= is satisfied) but the RPC
+    // listener hasn't finished coming up yet. Rather than failing on the
+    // first attempt, retry connection-refused for up to
+    // rpc_wait_timeout_seconds. Every other error path (auth, HTTP,
+    // JSON) is treated as fatal on the first attempt -- if we reached
+    // the daemon at all, waiting won't fix a configuration issue.
+    const int wait_seconds = std::max(0, cfg.rpc_wait_timeout_seconds);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(wait_seconds);
+    bool waiting_notice_printed = false;
 
-    HTTPReply response;
-    raii_evhttp_request req = obtain_evhttp_request(RpcHttpDone, &response);
-    if (!req) throw std::runtime_error("obtain_evhttp_request failed");
-    evhttp_request_set_error_cb(req.get(), RpcHttpError);
+    while (true) {
+        raii_event_base base = obtain_event_base();
+        raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), cfg.host, cfg.port);
+        evhttp_connection_set_timeout(evcon.get(), 30); // seconds
 
-    // Auth: explicit user/password if given, else cookie file. Fail with
-    // a clear pointer at the exact cookie path we tried.
-    std::string user_colon_pass;
-    if (!cfg.password.empty()) {
-        user_colon_pass = cfg.user + ":" + cfg.password;
-    } else if (!ReadCookieFile(cfg.cookie_path, user_colon_pass)) {
-        throw std::runtime_error(
-            "no -rpcpassword given and cookie file not readable at " + cfg.cookie_path +
-            " (start truenorthd first, or pass -rpcuser/-rpcpassword for a remote node)");
+        HTTPReply response;
+        raii_evhttp_request req = obtain_evhttp_request(RpcHttpDone, &response);
+        if (!req) throw std::runtime_error("obtain_evhttp_request failed");
+        evhttp_request_set_error_cb(req.get(), RpcHttpError);
+
+        // Auth: explicit user/password if given, else cookie file. Fail with
+        // a clear pointer at the exact cookie path we tried.
+        std::string user_colon_pass;
+        if (!cfg.password.empty()) {
+            user_colon_pass = cfg.user + ":" + cfg.password;
+        } else if (!ReadCookieFile(cfg.cookie_path, user_colon_pass)) {
+            throw std::runtime_error(
+                "no -rpcpassword given and cookie file not readable at " + cfg.cookie_path +
+                " (start truenorthd first, or pass -rpcuser/-rpcpassword for a remote node)");
+        }
+
+        struct evkeyvalq* headers = evhttp_request_get_output_headers(req.get());
+        evhttp_add_header(headers, "Host", cfg.host.c_str());
+        evhttp_add_header(headers, "Connection", "close");
+        evhttp_add_header(headers, "Content-Type", "application/json");
+        evhttp_add_header(headers, "Authorization", ("Basic " + EncodeBase64(user_colon_pass)).c_str());
+
+        // JSON-RPC 1.0 request body.
+        UniValue request_obj(UniValue::VOBJ);
+        request_obj.pushKV("jsonrpc", "1.0");
+        request_obj.pushKV("id", "truenorth-miner");
+        request_obj.pushKV("method", method);
+        request_obj.pushKV("params", params);
+        const std::string body = request_obj.write() + "\n";
+
+        struct evbuffer* output = evhttp_request_get_output_buffer(req.get());
+        evbuffer_add(output, body.data(), body.size());
+
+        const int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, "/");
+        req.release(); // ownership moved to evcon
+        if (r != 0) throw std::runtime_error("evhttp_make_request failed");
+
+        event_base_dispatch(base.get());
+
+        if (response.status == 0) {
+            // Transport-level failure. Retry if still within the wait window.
+            if (wait_seconds > 0 && std::chrono::steady_clock::now() < deadline) {
+                if (!waiting_notice_printed) {
+                    std::fprintf(stderr,
+                                 "truenorth-miner: waiting for truenorthd RPC at %s:%d to accept connections...\n",
+                                 cfg.host.c_str(), cfg.port);
+                    waiting_notice_printed = true;
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+            const std::string suffix = wait_seconds > 0
+                ? " after " + std::to_string(wait_seconds) + "s wait"
+                : "";
+            throw std::runtime_error("could not connect to truenorthd at " + cfg.host + ":" +
+                                     std::to_string(cfg.port) + suffix + " (is the daemon running?)");
+        }
+        if (response.status == 401) {
+            throw std::runtime_error("RPC 401 Unauthorized -- bad -rpcuser/-rpcpassword or stale cookie");
+        }
+        if (response.status >= 400 && response.status != 500 && response.status != 404) {
+            throw std::runtime_error("RPC HTTP " + std::to_string(response.status) + ": " + response.body);
+        }
+
+        UniValue reply;
+        if (!reply.read(response.body)) {
+            throw std::runtime_error("RPC returned unparseable JSON: " + response.body);
+        }
+        const UniValue& err = reply["error"];
+        if (!err.isNull()) {
+            const std::string msg = err["message"].isStr() ? err["message"].get_str() : err.write();
+            throw std::runtime_error("RPC method " + method + " returned error: " + msg);
+        }
+        return reply["result"];
     }
-
-    struct evkeyvalq* headers = evhttp_request_get_output_headers(req.get());
-    evhttp_add_header(headers, "Host", cfg.host.c_str());
-    evhttp_add_header(headers, "Connection", "close");
-    evhttp_add_header(headers, "Content-Type", "application/json");
-    evhttp_add_header(headers, "Authorization", ("Basic " + EncodeBase64(user_colon_pass)).c_str());
-
-    // JSON-RPC 1.0 request body.
-    UniValue request_obj(UniValue::VOBJ);
-    request_obj.pushKV("jsonrpc", "1.0");
-    request_obj.pushKV("id", "truenorth-miner");
-    request_obj.pushKV("method", method);
-    request_obj.pushKV("params", params);
-    const std::string body = request_obj.write() + "\n";
-
-    struct evbuffer* output = evhttp_request_get_output_buffer(req.get());
-    evbuffer_add(output, body.data(), body.size());
-
-    const int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, "/");
-    req.release(); // ownership moved to evcon
-    if (r != 0) throw std::runtime_error("evhttp_make_request failed");
-
-    event_base_dispatch(base.get());
-
-    if (response.status == 0) {
-        throw std::runtime_error("could not connect to truenorthd at " + cfg.host + ":" +
-                                 std::to_string(cfg.port) + " (is the daemon running?)");
-    }
-    if (response.status == 401) {
-        throw std::runtime_error("RPC 401 Unauthorized -- bad -rpcuser/-rpcpassword or stale cookie");
-    }
-    if (response.status >= 400 && response.status != 500 && response.status != 404) {
-        throw std::runtime_error("RPC HTTP " + std::to_string(response.status) + ": " + response.body);
-    }
-
-    UniValue reply;
-    if (!reply.read(response.body)) {
-        throw std::runtime_error("RPC returned unparseable JSON: " + response.body);
-    }
-    const UniValue& err = reply["error"];
-    if (!err.isNull()) {
-        const std::string msg = err["message"].isStr() ? err["message"].get_str() : err.write();
-        throw std::runtime_error("RPC method " + method + " returned error: " + msg);
-    }
-    return reply["result"];
 }
 
 // Convenience: getblockhash returns a hex string; parse it or die.
@@ -672,7 +705,7 @@ std::string ResolveCookiePath(const std::string& datadir, ChainType chain)
 } // namespace
 
 int main(int argc, char* argv[])
-{
+try {
     std::string chain_str = "main";
     std::string address;
     std::string datadir;
@@ -680,6 +713,7 @@ int main(int argc, char* argv[])
     std::string rpchost = "127.0.0.1";
     std::string rpcuser;     //!< optional; empty -> cookie-file auth
     std::string rpcpassword; //!< optional; empty -> cookie-file auth
+    int rpc_wait_timeout_seconds = 60; //!< 0 = fail-fast; >0 = retry connection for N seconds
     int max_blocks = 0;
     int budget_seconds = 30;
     int num_threads = 1;
@@ -717,6 +751,8 @@ int main(int argc, char* argv[])
             rpcuser = val;
         else if (key == "-rpcpassword")
             rpcpassword = val;
+        else if (key == "-rpcwaittimeout")
+            rpc_wait_timeout_seconds = std::stoi(val);
         else if (key == "-maxblocks")
             max_blocks = std::stoi(val);
         else if (key == "-budgetseconds")
@@ -819,6 +855,7 @@ int main(int argc, char* argv[])
     cfg.user = rpcuser;
     cfg.password = rpcpassword;
     cfg.cookie_path = ResolveCookiePath(datadir, chain);
+    cfg.rpc_wait_timeout_seconds = rpc_wait_timeout_seconds;
 
     std::fprintf(stderr,
                  "truenorth-miner -- chain=%s address=%s datadir=%s rpc=%s:%d threads=%d maxblocks=%d budget=%ds mode=%s largepages=%s numa=%s(active=%s,nodes=%d)\n",
@@ -908,4 +945,15 @@ int main(int argc, char* argv[])
 
     std::fprintf(stderr, "truenorth-miner done -- found %d block(s)\n", blocks_found);
     return 0;
+} catch (const std::exception& e) {
+    // Any exception that escapes main() -- RPC transport failure past the
+    // wait deadline, malformed responses, filesystem errors on datadir --
+    // surfaces here rather than terminating via std::terminate(). Print a
+    // clean message and exit non-zero so a supervisor can restart cleanly
+    // and a human running the miner interactively sees what went wrong.
+    std::fprintf(stderr, "truenorth-miner: %s\n", e.what());
+    return 1;
+} catch (...) {
+    std::fprintf(stderr, "truenorth-miner: unknown fatal error\n");
+    return 1;
 }
