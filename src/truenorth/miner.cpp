@@ -51,6 +51,7 @@
 #include <key_io.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
+#include <random.h>
 #include <rpc/request.h>
 #include <script/script.h>
 #include <serialize.h>
@@ -832,7 +833,11 @@ int main(int argc, char* argv[])
                  truenorth::numa::NumNodes());
 
     int blocks_found = 0;
+    // Anti-fingerprint: seed extranonce with OS randomness so this miner does
+    // not present the Patoshi-style monotonic "fresh start from 0" signature.
+    // Every restart produces a fresh random baseline; increments proceed normally.
     uint64_t extranonce = 0;
+    GetRandBytes({reinterpret_cast<unsigned char*>(&extranonce), sizeof(extranonce)});
     while (!g_stop.load()) {
         // getblocktemplate takes one params-object arg specifying which
         // BIPs the miner supports. We claim segwit; the node fills in
