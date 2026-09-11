@@ -304,9 +304,7 @@ UniValue RpcCall(const RpcConfig& cfg, const std::string& method, const UniValue
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
             }
-            const std::string suffix = wait_seconds > 0
-                ? " after " + std::to_string(wait_seconds) + "s wait"
-                : "";
+            const std::string suffix = wait_seconds > 0 ? " after " + std::to_string(wait_seconds) + "s wait" : "";
             throw std::runtime_error("could not connect to truenorthd at " + cfg.host + ":" +
                                      std::to_string(cfg.port) + suffix + " (is the daemon running?)");
         }
@@ -711,8 +709,8 @@ try {
     std::string datadir;
     std::string rpcport;
     std::string rpchost = "127.0.0.1";
-    std::string rpcuser;     //!< optional; empty -> cookie-file auth
-    std::string rpcpassword; //!< optional; empty -> cookie-file auth
+    std::string rpcuser;               //!< optional; empty -> cookie-file auth
+    std::string rpcpassword;           //!< optional; empty -> cookie-file auth
     int rpc_wait_timeout_seconds = 60; //!< 0 = fail-fast; >0 = retry connection for N seconds
     int max_blocks = 0;
     int budget_seconds = 30;
