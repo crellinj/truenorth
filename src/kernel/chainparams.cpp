@@ -128,7 +128,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].threshold = 1815; // 90%
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].period = 2016;
 
-        // Mainnet defense-in-depth values (nMinimumChainWork,
+        // Mainnet defence-in-depth values (nMinimumChainWork,
         // defaultAssumeValid, m_checkpoint_data) are assigned below,
         // after the genesis block is created and its hash is known.
         // Post-launch releases update the first two to a recent
@@ -167,7 +167,7 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = consensus.hashGenesisBlock;
         // Reorg-depth cap: reject any reorg deeper than 72 blocks
-        // (~2h 24min at 2-minute block time). Defense-in-depth
+        // (~2h 24min at 2-minute block time). Defence-in-depth
         // between checkpoints. See src/consensus/params.h.
         consensus.max_reorg_depth = 72;
         m_checkpoint_data = {
@@ -183,13 +183,19 @@ public:
         // release ASAP to avoid it where possible.
         // TrueNorth: no DNS seeds yet -- to be added once seed nodes are deployed.
 
-        // TrueNorth: P2PKH version byte 52 -> legacy addresses start with 'N'.
-        // SECRET_KEY follows the convention PUBKEY_ADDRESS + 128.
+        // TrueNorth address prefixes -- deliberately distinct from Bitcoin's
+        // to prevent cross-chain address confusion and wallet-restore mistakes.
+        //   P2PKH version byte 52 -> legacy addresses start with 'N'.
+        //   P2SH  version byte 65 -> P2SH addresses start with 'T'.
+        //   SECRET_KEY follows the convention PUBKEY_ADDRESS + 128 (= 180).
+        //   BIP32 extended keys encode as "Tpub..." / "Tprv..." (visible
+        //   4-char prefix in base58), verified consistent across random
+        //   payloads via contrib/seeds-style precomputation.
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 52);
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 5);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 65);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1, 180);
-        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x88, 0xB2, 0x1E};
-        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x88, 0xAD, 0xE4};
+        base58Prefixes[EXT_PUBLIC_KEY] = {0x7E, 0x5D, 0x5A, 0x83};
+        base58Prefixes[EXT_SECRET_KEY] = {0x7E, 0x5C, 0x65, 0x44};
 
         bech32_hrp = "north";
 
