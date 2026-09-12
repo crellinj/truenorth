@@ -81,7 +81,7 @@ Windows binaries are **cross-compiled from Linux** via mingw-w64 (see the `depen
 
 ### Testnet4
 
-The TrueNorth testnet currently runs onion-only — this is a testnet4-specific bootstrapping choice; mainnet will support clearnet peers alongside Tor. See [`doc/testnet.md`](doc/testnet.md) for the seed `.onion` address, a sample tester config, and bootstrap steps.
+The TrueNorth testnet supports both clearnet and Tor hidden-service peering. See [`doc/testnet.md`](doc/testnet.md) for seed addresses, sample tester configs (clearnet-first, Tor-first, or dual-stack), and bootstrap steps.
 
 A bare-minimum startup once the conf is in place:
 

@@ -1,9 +1,9 @@
 # Joining the TrueNorth testnet
 
 This is the operator runbook for testers who want to run a TrueNorth testnet4
-node. The testnet is currently reachable only via Tor; the seed node lives
-behind a hidden service. This is a testnet4-specific bootstrapping choice —
-mainnet will support clearnet peers alongside Tor hidden services.
+node. Testnet4 is reachable via both clearnet and Tor hidden services — pick
+whichever suits your setup. This dual-stack topology matches what mainnet
+will look like at launch.
 
 ## What's running
 
@@ -14,12 +14,14 @@ mainnet will support clearnet peers alongside Tor hidden services.
 | Address HRP | `tnorth41q...` (segwit) |
 | P2P port | 49555 |
 | RPC port (local-only by default) | 49554 |
-| Seed node | `3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555` |
+| Seed (clearnet) | `seed.nyc.tncoin.xyz:49555` (A record → `138.197.97.151`) |
+| Seed (Tor onion) | `3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555` |
 
-The testnet currently runs onion-only — no clearnet seed, no DNS seeder yet.
-Mainnet will support clearnet peers; this Tor-only setup is specific to
-testnet4 while we bootstrap. Bootstrapping happens entirely through the
-`.onion` addnode below.
+The clearnet and onion seeds serve the same chain — pick whichever suits
+your operator setup, or use both. There's no DNS seeder yet; the compiled-in
+seeds in the release binary include both endpoints so a fresh node will find
+peers automatically. See [`doc/public-seed-setup.md`](public-seed-setup.md) if
+you want to run your own seed node (either topology).
 
 testnet4 was picked over testnet3 because testnet4's chainparams are
 designed for fresh chains: all BIPs activate from genesis, BIP94 timewarp
@@ -39,8 +41,8 @@ rejections. Regtest is similarly checkpoint-free.
 ## Requirements
 
 - Linux x86_64, macOS arm64, or Windows x86_64 (all supported by the pre-built release binaries; Windows operators should follow [`doc/windows-testnet.md`](windows-testnet.md) instead of the shell commands below); or build-from-source on anything else
-- Tor 0.4.x or later running locally with SOCKS on 127.0.0.1:9050
 - Roughly 1 GiB RAM, 4 GiB disk, any always-on internet connection
+- **Optional:** Tor 0.4.x or later running locally with SOCKS on 127.0.0.1:9050, if you want to route peer traffic through Tor
 
 The pre-built binaries dynamically link against modern glibc, so an Ubuntu
 24.04 (or equivalent) host is the easy path. Older glibc will need source
@@ -65,15 +67,15 @@ cmake invocation. A from-scratch build takes 10-30 minutes depending on CPU.
 ## Configuration
 
 Create `~/.truenorth/truenorth.conf` (on macOS: `~/Library/Application
-Support/TrueNorth/truenorth.conf`):
+Support/TrueNorth/truenorth.conf`).
+
+**Default: dual-stack (clearnet + Tor).** Simplest for most testers:
 
 ```
 testnet4=1
-proxy=127.0.0.1:9050
+proxy=127.0.0.1:9050   # remove if not running Tor
 
 [testnet4]
-addnode=3guf2wvltezb6w3tjjveumtt6lsnb7bjpts6ornk4hj4wlod4s7n53id.onion:49555
-onlynet=onion
 listen=1
 listenonion=0
 
@@ -83,15 +85,27 @@ rpcuser=tn_user
 rpcpassword=GENERATE_YOUR_OWN
 ```
 
-Generate a strong RPC password and put it in `rpcpassword=`. The simplest:
+The compiled-in seed list includes both clearnet and onion endpoints, so
+`addnode=` lines are not required — the daemon finds peers automatically.
+
+**Tor-only variant.** If you want to refuse clearnet peer connections
+entirely (privacy-motivated operators, hidden-service seed operators):
+add `onlynet=onion` in the `[testnet4]` block. This works because the
+compiled-in seeds include onion endpoints too. If Tor is disrupted or your
+SOCKS daemon isn't reachable, the node will have no peers — that's the
+tradeoff you're opting into.
+
+**Clearnet-only variant.** Remove the `proxy=` line, drop the `onlynet=`
+line. Peers reached over clearnet only; onion peers ignored.
+
+Generate a strong RPC password and put it in `rpcpassword=`:
 
     openssl rand -hex 32
 
-`listenonion=0` is correct if you only consume the seed and don't host your
-own hidden service. If you want to also accept inbound peers, configure a
-Tor `HiddenServiceDir` block in your torrc that maps a port to
-`127.0.0.1:49555`, then set `externalip=<your-onion>` in the conf and drop
-`listenonion=0`.
+`listenonion=0` is correct if you only consume peers and don't host your
+own hidden service. If you want to accept inbound peers over Tor, see
+[`doc/public-seed-setup.md`](public-seed-setup.md) for the hidden-service
+configuration steps.
 
 ## First run: start the node
 
@@ -101,8 +115,8 @@ Tor `HiddenServiceDir` block in your torrc that maps a port to
 ```
 
 The `-rpcwait` flag waits for the daemon to come up before issuing the RPC.
-First call after a fresh start may take 10-30 seconds while Tor circuits
-establish and the seed peer is reached.
+First call after a fresh start may take 10-30 seconds while peer connections
+are established (a bit longer if you're routing through Tor).
 
 After connection:
 
@@ -184,9 +198,9 @@ other testers to swap addresses, then:
 ./truenorth-cli -testnet4 -rpcwallet=mywallet sendtoaddress <their-tnorth4-address> 10
 ```
 
-Tx propagation across the Tor-routed onion network is what we want to see
-working under load. Mempool size, fee estimation behaviour, and reorg
-handling are all interesting to stress.
+Tx propagation across the dual-stack network is what we want to see working
+under load. Mempool size, fee estimation behaviour, and reorg handling are
+all interesting to stress.
 
 ## Real-time coordination
 
@@ -206,8 +220,8 @@ Open a GitHub issue at
 [github.com/truenorth-project/truenorth/issues/new](https://github.com/truenorth-project/truenorth/issues/new)
 for any of:
 
-- A node that fails to connect to the seed (likely a Tor or local config
-  issue, but the issue tracker is the right place)
+- A node that fails to connect to any peer (likely a local network, Tor, or
+  config issue, but the issue tracker is the right place)
 - A node that connects but doesn't sync past a specific height
 - A consensus failure: your node has a different best-block hash from the
   seed and neither side reorgs
