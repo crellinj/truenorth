@@ -418,6 +418,7 @@ continuously online for at least 7 days on both endpoints (clearnet + onion).
 | Operator | Clearnet | Onion | Notes |
 |---|---|---|---|
 | robert-pathy | `seed.nyc.tncoin.xyz:49555` | `qpjxqbcp4vkoalprpzuvvzyos7lej6qi3muhpsycgfmog6tlluayctad.onion:49555` | DigitalOcean droplet (nyc3, `s-1vcpu-1gb`), Debian 12, direct public IP bound to the NIC. Hostname is an A record for `138.197.97.151`. The compiled-in fallback uses the raw IP; the hostname is a friendlier alias for operators adding this seed manually via `-addnode=`. |
+| crellinj | `132.145.111.0:49555` | `mggupu2hkgxxv67wdizwgjcwg24yzydznwjsbeja27f36ojsjcqfeoad.onion:49555` | Oracle Cloud "Always Free" tier (Toronto region), Ubuntu, direct public IP bound to the NIC. `truenorthd` runs under a systemd unit with `Restart=on-failure`; `dbcache`/`maxmempool` tuned down per this guide's low-memory stanza for the 1 GiB shape. |
 
 ### Topology B — onion-only
 
