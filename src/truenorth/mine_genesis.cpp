@@ -190,12 +190,21 @@ int main(int argc, char* argv[])
     }
     std::fprintf(stderr, "\n");
 
-    // Default per-chain nTimes are pre-launch placeholders. For an actual
-    // launch re-mine, pass -chain=NAME -time=NTIME from the runbook so the
-    // single edit to chainparams.cpp's CreateGenesisBlock(NTIME, ...) call
-    // and the corresponding mine here agree by construction.
+    // Default per-chain nTimes.
+    //
+    // Mainnet nTime is set to 2026-10-05 00:00:00 UTC (1759622400), the
+    // coordinated launch instant. This matches Consensus::Params::nLaunchTime
+    // in kernel/chainparams.cpp, so the genesis block's timestamp equals
+    // the point after which post-genesis blocks are permitted. See
+    // src/consensus/params.h::nLaunchTime and
+    // src/validation.cpp::ContextualCheckBlockHeader.
+    //
+    // Testnet/signet/regtest defaults are placeholders. For any real
+    // re-mine, pass -chain=NAME -time=NTIME so the single edit to
+    // chainparams.cpp's CreateGenesisBlock(NTIME, ...) call and the mine
+    // here agree by construction.
     std::array<ChainSpec, 5> chains{{
-        {"main", 1748000000, 0x207fffffu},
+        {"main", 1759622400, 0x207fffffu},
         {"testnet3", 1748000010, 0x207fffffu},
         {"testnet4", 1748000020, 0x207fffffu},
         {"signet", 1748000030, 0x207fffffu},

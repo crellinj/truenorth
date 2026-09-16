@@ -170,6 +170,11 @@ public:
         // (~2h 24min at 2-minute block time). Defence-in-depth
         // between checkpoints. See src/consensus/params.h.
         consensus.max_reorg_depth = 72;
+        // Mainnet launch time: 2026-10-05 00:00:00 UTC.
+        // Blocks with nTime < this are rejected — prevents pre-launch
+        // shadow mining from RC binaries. See src/consensus/params.h
+        // and src/validation.cpp::ContextualCheckBlockHeader.
+        consensus.nLaunchTime = 1759622400;
         m_checkpoint_data = {
             /* .mapCheckpoints = */ {
                 {0, consensus.hashGenesisBlock},
@@ -278,6 +283,7 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
         consensus.max_reorg_depth = 72;
+        consensus.nLaunchTime = 0; // testnet: rule not enforced
 
         // TrueNorth testnet3 network magic. Pattern: mainnet (fa c4 b8 d2)
         // + last byte incremented per chain. None collides with Bitcoin's
@@ -386,6 +392,7 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
         consensus.max_reorg_depth = 72;
+        consensus.nLaunchTime = 0; // testnet4: rule not enforced
 
         // TrueNorth testnet4 magic -- next byte in the fa c4 b8 d* family
         // after testnet3. Not on the June 1 launch path (we're launching
@@ -478,6 +485,7 @@ public:
             consensus.nMinimumChainWork = uint256{};
             consensus.defaultAssumeValid = uint256{};
             consensus.max_reorg_depth = 72;
+            consensus.nLaunchTime = 0; // signet: rule not enforced
             m_assumed_blockchain_size = 0;
             m_assumed_chain_state_size = 0;
             chainTxData = ChainTxData{
@@ -490,6 +498,7 @@ public:
             consensus.nMinimumChainWork = uint256{};
             consensus.defaultAssumeValid = uint256{};
             consensus.max_reorg_depth = 72;
+            consensus.nLaunchTime = 0; // signet: rule not enforced
             m_assumed_blockchain_size = 0;
             m_assumed_chain_state_size = 0;
             chainTxData = ChainTxData{
@@ -628,6 +637,7 @@ public:
         // arbitrary-depth reorgs during testing. See
         // consensus/params.h::max_reorg_depth.
         consensus.max_reorg_depth = 0;
+        consensus.nLaunchTime = 0; // regtest: rule not enforced
 
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;

@@ -101,6 +101,16 @@ common algorithms can be rented cheaply.
 - **Developer checkpoints.** Active from genesis (mechanism ships in the Bitcoin
   Core base). Primary defence in the early launch window; a fresh checkpoint added
   each release. Retained afterward as a near-zero-cost static fallback.
+- **Launch-time consensus gate.** Mainnet ships with a compile-time
+  `nLaunchTime` value (`Consensus::Params::nLaunchTime`, set in `CMainParams`
+  in `src/kernel/chainparams.cpp`). Any block whose timestamp is before this
+  value is rejected by `ContextualCheckBlockHeader` in `src/validation.cpp`.
+  Combined with the existing 2-hour future-block rejection, this makes it
+  infeasible to produce accepted mainnet blocks before the coordinated launch
+  instant even from an early leak of release-candidate binaries with real
+  chainparams. Not enforced on testnet, signet, or regtest (`nLaunchTime = 0`
+  disables the check). See [`doc/notarization-design.md`](doc/notarization-design.md)
+  for the complementary post-launch reorg-anchor mechanism.
 - **Notarization to a larger chain (delayed-PoW style).** Committed; built and
   deployed once the chain is live. Periodically commits TrueNorth block hashes into a
   high-hashrate chain so any reorg past a notarized point gets rejected. Becomes the

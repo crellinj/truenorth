@@ -4328,6 +4328,17 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
         return state.Invalid(BlockValidationResult::BLOCK_TIME_FUTURE, "time-too-new", "block timestamp too far in the future");
     }
 
+    // TrueNorth: reject blocks before the chain's launch time. Prevents
+    // pre-launch shadow mining from RC binaries or leaked chainparams.
+    // nLaunchTime is 0 on chains where this rule doesn't apply (testnet,
+    // signet, regtest); mainnet ships with the coordinated launch time.
+    // See consensus/params.h::nLaunchTime.
+    if (consensusParams.nLaunchTime > 0 && block.nTime < consensusParams.nLaunchTime) {
+        return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "block-before-launch",
+                             strprintf("block timestamp %d is before chain launch time %d",
+                                       block.nTime, consensusParams.nLaunchTime));
+    }
+
     // Reject blocks with outdated version
     if ((block.nVersion < 2 && DeploymentActiveAfter(pindexPrev, chainman, Consensus::DEPLOYMENT_HEIGHTINCB)) ||
         (block.nVersion < 3 && DeploymentActiveAfter(pindexPrev, chainman, Consensus::DEPLOYMENT_DERSIG)) ||
